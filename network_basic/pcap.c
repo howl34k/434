@@ -1,6 +1,6 @@
-#include <stdlib.h>
 #include <stdio.h>
 #include <pcap.h>
+#include <netinet/ether.h>
 #include <arpa/inet.h>
 
 
@@ -54,29 +54,22 @@ struct tcpheader {
 
 void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet){
     struct ethheader *eth = (struct ethheader *)packet;
-
+    printf("******************** MAC Address ********************\n");
     printf("     Source MAC Address: %s\n", ether_ntoa((struct ether_addr *)eth->ether_shost));
     printf("Destination MAC Address: %s\n", ether_ntoa((struct ether_addr *)eth->ether_dhost));
+    printf("\n");
 
-    if (ntohs(eth->ether_type) == 0x0800) { // 0x0800 is IP type
-        struct ipheader * ip = (struct ipheader *)(packet + sizeof(struct ethheader)); 
+    struct ipheader * ip = (struct ipheader *)(packet + sizeof(struct ethheader)); 
+    printf("******************** IP Address ********************\n");
+    printf("      Source IP Address: %s\n", inet_ntoa(ip->iph_sourceip));   
+    printf(" Destination IP Address: %s\n", inet_ntoa(ip->iph_destip));
+    printf("\n");
 
-        printf("Source IP Address: %s\n", inet_ntoa(ip->iph_sourceip));   
-        printf("Destination IP Address: %s\n", inet_ntoa(ip->iph_destip));
-
-        if(ntohs(ip->iph_protocol) == IPPROTO_TCP){
-            struct tcpheader * tcp = (struct tcpheader *)(packet + sizeof(struct ethheader) + ip->iph_ihl * 4);
-
-            printf("Source Port: %s\n", inet_ntoa(tcp->tcp_sport));
-            printf("Destination Port: %s\n", inet_ntoa(tcp->tcp_dport));
-        }
-        else{
-            printf("Doesn't exist TCP Protocol !");
-        }
-    }
-    else{
-        printf("Doesn't exist IP Protocol !");
-  }
+    struct tcpheader * tcp = (struct tcpheader *)(packet + sizeof(struct ethheader) + sizeof(struct ipheader));
+    printf("******************** Port Number ********************\n");
+    printf("            Source Port: %d\n", ntohs(tcp->tcp_sport));
+    printf("       Destination Port: %d\n", ntohs(tcp->tcp_dport));
+    printf("\n\n\n");
 }
 
 int main(){
@@ -84,7 +77,7 @@ int main(){
     char errbuf[PCAP_ERRBUF_SIZE];
 
     // Step 1: Open live pcap session on NIC with name enp0s3
-    handle = pcap_open_live("enp0s3", BUFSIZ, 1, 1000, errbuf);
+    handle = pcap_open_live("ens33", BUFSIZ, 1, 1000, errbuf);
 
     // Step 2: Capture packets
     pcap_loop(handle, -1, got_packet, NULL);
